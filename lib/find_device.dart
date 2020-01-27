@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:bt_flutter/device_screen.dart';
-import 'package:bt_flutter/pulse.dart';
+import 'package:bt_flutter/log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue/flutter_blue.dart';
@@ -144,165 +144,7 @@ class _FindDeviceScreenState extends State<FindDeviceScreen>
             ),
           ),
         ),
-        /* Expanded(
-          flex: 3,
-          child: Container(
-            alignment: Alignment.bottomCenter,
-            decoration: BoxDecoration(),
-            child: StreamBuilder<List<ScanResult>>(
-              stream: FlutterBlue.instance.scanResults,
-              initialData: [],
-              builder: (context, snapshot) =>
-                  snapshot.hasData && snapshot.data.length > 0
-                      ? snapshot.data
-                          .map((d) => ListTile(
-                              title: Text(
-                                'Scanning',
-                                textAlign: TextAlign.center,
-                              ),
-                              subtitle: Text(
-                                d.device.id.id,
-                                textAlign: TextAlign.center,
-                              )))
-                          .last
-                      : Container(),
-            ),
-          ),
-        ),*/
       ]),
-
-      /*Container(
-        decoration: BoxDecoration(
-            gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Colors.black, Colors.black])),
-        width: MediaQuery.of(context).size.width,
-        height: MediaQuery.of(context).size.height,
-        child: Stack(
-          children: <Widget>[
-            Align(
-              alignment: Alignment.center,
-              child: StreamBuilder<bool>(
-                stream: FlutterBlue.instance.isScanning,
-                initialData: false,
-                builder: (context, snapshot) => snapshot.data
-                    ? Container(
-                        child: Column(children: [
-                        Align(
-                          alignment: Alignment.center,
-                          child: Container(
-                              constraints: BoxConstraints.expand(
-                                  height:
-                                      MediaQuery.of(context).size.height * 0.5),
-                              child: PulseAnimator(
-                                  icon: Icons.bluetooth_searching)),
-                        ),
-                        StreamBuilder<List<ScanResult>>(
-                          stream: FlutterBlue.instance.scanResults,
-                          initialData: [],
-                          builder: (context, snapshot) =>
-                              snapshot.hasData && snapshot.data.length > 0
-                                  ? snapshot.data
-                                      .map((d) => ListTile(
-                                          title: Text(
-                                            'Escaneando',
-                                            textAlign: TextAlign.center,
-                                          ),
-                                          subtitle: Text(
-                                            d.device.id.id,
-                                            textAlign: TextAlign.center,
-                                          )))
-                                      .last
-                                  : Container(),
-                        ),
-                        Align(
-                          alignment: Alignment.bottomCenter,
-                          child: MaterialButton(
-                              color: Colors.blue,
-                              onPressed: () {
-                                stopScan();
-                              },
-                              child: Text('Stop')),
-                        ),
-
-                        /*  Positioned(
-                        bottom: 1.0,
-                        child: MaterialButton(
-                            color: Colors.blue,
-                            onPressed: () {
-                              stopScan();
-                            },
-                            child: Text('Stop')),
-                      ),*/
-                      ]))
-                    : MaterialButton(
-                        color: Colors.blue,
-                        onPressed: () => scanDevices(),
-                        child: Text('Rescan')),
-              ),
-            ),
-            /* StreamBuilder<List<BluetoothDevice>>(
-              stream: Stream.periodic(Duration(seconds: 1))
-                  .asyncMap((_) => FlutterBlue.instance.connectedDevices),
-              initialData: [],
-              builder: (context, snapshot) =>
-                  snapshot.hasData && snapshot.data.length > 0
-                      ? snapshot.data
-                          .map((d) => ListTile(
-                              onTap: () => d.disconnect(),
-                              title: Text(
-                                'Se conectó a',
-                                textAlign: TextAlign.center,
-                              ),
-                              subtitle: Text(
-                                d.id.id,
-                                textAlign: TextAlign.center,
-                              )))
-                          .last
-                      : Text('No se ha conectado'),
-            ),*/
-            /* device != null
-                ? StreamBuilder<BluetoothDeviceState>(
-                    stream: device.state,
-                    initialData: BluetoothDeviceState.connecting,
-                    builder: (c, snapshot) => ListTile(
-                      leading: (snapshot.data == BluetoothDeviceState.connected)
-                          ? Icon(Icons.bluetooth_connected)
-                          : Icon(Icons.bluetooth_disabled),
-                      title: Text(
-                          'Device is ${snapshot.data.toString().split('.')[1]}.'),
-                      subtitle: Text('${device.id}'),
-                      trailing: StreamBuilder<bool>(
-                        stream: device.isDiscoveringServices,
-                        initialData: false,
-                        builder: (c, snapshot) => IndexedStack(
-                          index: snapshot.data ? 1 : 0,
-                          children: <Widget>[
-                            IconButton(
-                              icon: Icon(Icons.refresh),
-                              onPressed: () => device.discoverServices(),
-                            ),
-                            IconButton(
-                              icon: SizedBox(
-                                child: CircularProgressIndicator(
-                                  valueColor:
-                                      AlwaysStoppedAnimation(Colors.grey),
-                                ),
-                                width: 18.0,
-                                height: 18.0,
-                              ),
-                              onPressed: null,
-                            )
-                          ],
-                        ),
-                      ),
-                    ),
-                  )
-                : Container(),*/
-          ],
-        ),
-      ),*/
     );
   }
 
@@ -318,20 +160,21 @@ class _FindDeviceScreenState extends State<FindDeviceScreen>
       final List<ScanResult> list = value;
 
       list.forEach((d) {
-        print(d.device.id.id);
         if (d.device.name.toLowerCase() == 'led') {
-          //if (d.device.id.id == 'CE:D6:7D:19:4D:D5') {
+          Log.instance.writeLog("${d.device.name} founded ");
           setState(() {
             device = d.device;
-            device
-                .connect()
-                .then((v) => setState(() {
-                      connected = true;
-                      _pulseColor = Colors.greenAccent;
-                      _pulseIcon = Icons.bluetooth_connected;
-                    }))
-                .whenComplete(() {
-              Future.delayed(const Duration(seconds: 5), () {
+            device.connect().then((v) {
+              Log.instance.writeLog("${d.device.name} connecting");
+              setState(() {
+                connected = true;
+                _pulseColor = Colors.greenAccent;
+                _pulseIcon = Icons.bluetooth_connected;
+              });
+            }).whenComplete(() {
+              Log.instance.writeLog("${d.device.name} connected");
+              Future.delayed(const Duration(seconds: 2), () {
+                Log.instance.writeLog("Redirect to device screen");
                 Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) => DeviceScreen(device: device)));
               });
@@ -339,24 +182,28 @@ class _FindDeviceScreenState extends State<FindDeviceScreen>
           });
         }
       });
-    }).whenComplete(() => !connected
-            ? setState(() {
-                _pulseColor = Colors.red;
-                _pulseIcon = Icons.bluetooth_disabled;
-              })
-            : null);
-
-    // .whenComplete(() => FlutterBlue.instance.stopScan());
+    }).whenComplete(
+      () {
+        if (!connected) {
+          Log.instance.writeLog("Device not found");
+          setState(() {
+            _pulseColor = Colors.red;
+            _pulseIcon = Icons.bluetooth_disabled;
+          });
+        }
+      },
+    );
   }
 
   void stopScan() async {
-    await FlutterBlue.instance
-        .stopScan()
-        .then((v) => setState(() {
-              _pulseColor = Colors.red;
-              _pulseIcon = Icons.not_interested;
-            }))
-        .whenComplete(() {
+    await FlutterBlue.instance.stopScan().then((v) {
+      Log.instance.writeLog("Stopping scan");
+      setState(() {
+        _pulseColor = Colors.red;
+        _pulseIcon = Icons.not_interested;
+      });
+    }).whenComplete(() {
+      Log.instance.writeLog("Scan stopped");
       _controller.stop();
       SystemChannels.platform.invokeMethod('SystemNavigator.pop');
     });

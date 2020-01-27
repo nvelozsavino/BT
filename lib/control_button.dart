@@ -28,9 +28,8 @@ class ControlButtons extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 color: Colors.black26,
-                blurRadius: 10.0, // has the effect of softening the shadow
+                blurRadius: 10.0,
                 spreadRadius: 5,
-                //offset: Offset(0, 0), // has the effect of extending the shadow
               )
             ],
             color: color,
@@ -54,9 +53,9 @@ class ControlButtons extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 color: Colors.black26,
-                blurRadius: 10.0, // has the effect of softening the shadow
+                blurRadius: 10.0,
                 spreadRadius: 5,
-                offset: Offset(0, 0), // has the effect of extending the shadow
+                offset: Offset(0, 0),
               )
             ],
             color: color,

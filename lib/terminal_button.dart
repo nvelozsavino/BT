@@ -12,10 +12,6 @@ class TerminalButton extends StatefulWidget {
 }
 
 class _TerminalButtonState extends State<TerminalButton> {
-  bool isPressed = false;
-  Color releaseColor = Color(0xff434343);
-  Color pressedColor = Color(0xff636363);
-
   @override
   Widget build(BuildContext context) {
     return InkWell(

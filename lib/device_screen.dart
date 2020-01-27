@@ -1,18 +1,12 @@
 import 'dart:async';
-import 'dart:convert';
-
-import 'dart:math';
-import 'dart:typed_data';
-
 import 'package:bt_flutter/control_button.dart';
-import 'package:bt_flutter/temp.dart';
+import 'package:bt_flutter/log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue/flutter_blue.dart';
+import 'package:flutter_email_sender/flutter_email_sender.dart';
 
 enum SnackbarType { SNACKBAR_ERROR, SNACKBAR_SUCCESS }
-
-enum BluetoothState { SEARCHING, CONNECTING, CONNECTED }
 
 class DeviceScreen extends StatefulWidget {
   final BluetoothDevice device;
@@ -24,174 +18,16 @@ class DeviceScreen extends StatefulWidget {
 
 class _DeviceScreenState extends State<DeviceScreen> {
   final BluetoothDevice device;
-
-  bool isConnected;
-  bool deviceConnected = false;
-
   _DeviceScreenState(this.device);
 
-  //Guid serviceGuid = Guid('00001811-0000-1000-8000-00805f9b34fb');
+  bool isConnected;
   Guid serviceGuid = Guid('19b10000-e8f2-537e-4f6c-d104768a1214');
   Guid characteristicGuid = Guid('19b10001-e8f2-537e-4f6c-d104768a1214');
-  //Guid characteristicGuid = Guid('00002a44-0000-1000-8000-00805f9b34fb');
-  var logBuffer = new StringBuffer();
+
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
 
-  ScrollController logScroll = new ScrollController();
-
-  String logText = "";
-
-  Widget content() {
-    return Column(
-      children: <Widget>[
-        StreamBuilder<BluetoothDeviceState>(
-          stream: device.state,
-          initialData: BluetoothDeviceState.connecting,
-          builder: (c, snapshot) => ListTile(
-            leading: (snapshot.data == BluetoothDeviceState.connected)
-                ? Icon(Icons.bluetooth_connected)
-                : Icon(Icons.bluetooth_disabled),
-            title: Text('Device is ${snapshot.data.toString().split('.')[1]}.'),
-            subtitle: Text('${device.id}'),
-            trailing: Switch(
-              activeColor: Colors.green,
-              value: isConnected,
-              onChanged: (bool value) {
-                value
-                    ? device.connect().then((v) {
-                        setState(() {
-                          isConnected = true;
-                        });
-                      }).whenComplete(() {
-                        writeLog("Se ha conectado a ${device.id.id}");
-                        device.discoverServices();
-                      })
-                    : device.disconnect().then((v) {
-                        setState(() {
-                          isConnected = false;
-                        });
-                      }).whenComplete(() {
-                        writeLog("Se ha desconectado de ${device.id.id}");
-                      });
-              },
-            ),
-          ),
-        ),
-        StreamBuilder<int>(
-          stream: device.mtu,
-          initialData: 0,
-          builder: (c, snapshot) => ListTile(
-            title: Text('MTU Size'),
-            subtitle: Text('${snapshot.data} bytes'),
-            trailing: IconButton(
-              icon: Icon(Icons.edit),
-              onPressed: () => device.requestMtu(223),
-            ),
-          ),
-        ),
-        StreamBuilder<BluetoothDeviceState>(
-            stream: device.state,
-            initialData: BluetoothDeviceState.disconnected,
-            builder: (context, snapshot) => snapshot.hasData &&
-                    snapshot.data == BluetoothDeviceState.connected
-                ? StreamBuilder<List<BluetoothService>>(
-                    stream: device.services,
-                    initialData: [],
-                    builder: (c, snapshot) {
-                      var cc = snapshot.data
-                          .firstWhere((s) => s.uuid == serviceGuid)
-                          .characteristics
-                          .firstWhere((c) => c.uuid == characteristicGuid);
-
-                      print(cc.uuid.toString());
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: <Widget>[
-                          Expanded(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: <Widget>[
-                                ControlButtons(
-                                  upIcon: Icons.arrow_drop_up,
-                                  downIcon: Icons.arrow_drop_down,
-                                  color: Colors.blueGrey,
-                                  onIncrement: () => cc
-                                      .write(upStart())
-                                      .timeout(Duration(seconds: 1),
-                                          onTimeout: () async {
-                                    writeLog("Timeout on downStop");
-                                    showSnackbar(
-                                        message: "Timeout",
-                                        type: SnackbarType.SNACKBAR_ERROR);
-                                  }),
-                                  onDecrement: () => cc
-                                      .write(downStart())
-                                      .timeout(Duration(seconds: 1),
-                                          onTimeout: () async {
-                                    writeLog("Timeout on downStart");
-                                    showSnackbar(
-                                        message: "Timeout",
-                                        type: SnackbarType.SNACKBAR_ERROR);
-                                  }),
-                                )
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: <Widget>[
-                                ControlButtons(
-                                  color: Colors.red,
-                                  upIcon: Icons.arrow_drop_up,
-                                  downIcon: Icons.arrow_drop_down,
-                                  onIncrement: () => cc
-                                      .write(upStop())
-                                      .timeout(Duration(seconds: 1),
-                                          onTimeout: () async {
-                                    writeLog("Timeout on upStop");
-                                    showSnackbar(
-                                        message: "Timeout",
-                                        type: SnackbarType.SNACKBAR_ERROR);
-                                  }),
-                                  onDecrement: () => cc
-                                      .write(downStop())
-                                      .timeout(Duration(seconds: 1),
-                                          onTimeout: () async {
-                                    writeLog("Timeout on downStop");
-                                    showSnackbar(
-                                        message: "Timeout",
-                                        type: SnackbarType.SNACKBAR_ERROR);
-                                  }),
-                                )
-                              ],
-                            ),
-                          ),
-                        ],
-                      );
-                    })
-                : Container()),
-        /*StreamBuilder<List<BluetoothService>>(
-                stream: device.services,
-                initialData: [],
-                builder: (c, snapshot) {
-                  return Column(
-                    children: _buildServiceTiles(snapshot.data),
-                  );
-                }),*/
-      ],
-    );
-  }
-
   void writeLog(String message) {
-    var time = new DateTime.now().toString().substring(0, 16);
-    logBuffer.writeln("$time: $message");
-    setState(() {
-      logText = logBuffer.toString();
-    });
+    Log.instance.writeLog("Device Screen : $message");
   }
 
   void showSnackbar({String message, SnackbarType type}) {
@@ -219,22 +55,21 @@ class _DeviceScreenState extends State<DeviceScreen> {
   @override
   void dispose() {
     super.dispose();
-
     device.disconnect();
   }
 
   void discoverServices() {
     device.discoverServices().then((s) {
       s.forEach((ser) {
-        print(ser.uuid.toString());
+        writeLog("Scan service ${ser.uuid.toString()}");
         if (ser.uuid == serviceGuid) {
           writeLog(
-              "Se ha encontrado el servicio ${'0x${ser.uuid.toString().toUpperCase().substring(4, 8)}'}");
+              "Service founded ${'0x${ser.uuid.toString().toUpperCase().substring(4, 8)}'}");
           ser.characteristics.forEach((c) async {
-            print(c.uuid);
+            writeLog("Scan characteristic ${c.uuid.toString()}");
             if (c.uuid == characteristicGuid) {
               writeLog(
-                  "Se ha encontrado la caracteristica ${'0x${c.uuid.toString().toUpperCase().substring(4, 8)}'}");
+                  "Characteristic founded ${'0x${c.uuid.toString().toUpperCase().substring(4, 8)}'}");
               setState(() {
                 isConnected = true;
               });
@@ -246,7 +81,6 @@ class _DeviceScreenState extends State<DeviceScreen> {
                       message: "Timeout", type: SnackbarType.SNACKBAR_ERROR);
                 }).listen((v) {
                   if (v.isNotEmpty) {
-                    print(v);
                     writeLog("Se recibió ${v.toString()}");
                     if (v.contains(0)) {
                       showSnackbar(
@@ -286,18 +120,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
     });
   }
 
-  List<int> _getRandomBytes() {
-    final math = Random();
-    return [
-      math.nextInt(255),
-      math.nextInt(255),
-      math.nextInt(255),
-      math.nextInt(255)
-    ];
-  }
-
   List<int> upStart() {
-    writeLog('${[0x00]}');
     writeLog('upStart write ${[0x53]}');
     return [0x53];
   }
@@ -310,43 +133,11 @@ class _DeviceScreenState extends State<DeviceScreen> {
   List<int> upStop() {
     writeLog('upStop write ${[0x90]}');
     return [0x90];
-    //  return _getRandomBytes();
   }
 
   List<int> downStop() {
     writeLog('downStop write ${[0x91]}');
     return [0x91];
-    //return _getRandomBytes();
-  }
-
-  List<Widget> _buildServiceTiles(List<BluetoothService> services) {
-    return services
-        .map(
-          (s) => ServiceTile(
-            service: s,
-            characteristicTiles: s.characteristics
-                .map(
-                  (c) => CharacteristicTile(
-                    characteristic: c,
-                    onReadPressed: () => c.read(),
-                    onWritePressed: () => c.write(_getRandomBytes()),
-                    onNotificationPressed: () =>
-                        c.setNotifyValue(!c.isNotifying),
-                    descriptorTiles: c.descriptors
-                        .map(
-                          (d) => DescriptorTile(
-                            descriptor: d,
-                            onReadPressed: () => d.read(),
-                            onWritePressed: () => d.write(_getRandomBytes()),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                )
-                .toList(),
-          ),
-        )
-        .toList();
   }
 
   Widget controlArea() {
@@ -419,7 +210,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
                                             type: SnackbarType.SNACKBAR_ERROR);
                                       }),
                                   onDecrement: () => cc
-                                      .write(downStop())
+                                      .write(downStart())
                                       .timeout(Duration(seconds: 1),
                                           onTimeout: () async {
                                         writeLog("Timeout on downStart");
@@ -484,19 +275,27 @@ class _DeviceScreenState extends State<DeviceScreen> {
                                     })
                                     .whenComplete(
                                         () => writeLog("downStop completed"))
-                                    .catchError((Object e) {
-                                      writeLog("downStop  ${e.toString()}");
-                                      showSnackbar(
-                                          message: e.toString(),
-                                          type: SnackbarType.SNACKBAR_ERROR);
-                                    }),
+                                    .catchError(
+                                      (Object e) {
+                                        writeLog("downStop  ${e.toString()}");
+                                        showSnackbar(
+                                            message: e.toString(),
+                                            type: SnackbarType.SNACKBAR_ERROR);
+                                      },
+                                    ),
                               )
                             ],
                           ),
                         ],
                       );
                     } catch (e) {
-                      return Center(child: Text('Service or characteristic not found', style: TextStyle(color: Colors.white),),);
+                      writeLog("Catch error ${e.toString()}");
+                      return Center(
+                        child: Text(
+                          'Service or characteristic not found',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      );
                     }
                   } else {
                     return Container();
@@ -519,26 +318,15 @@ class _DeviceScreenState extends State<DeviceScreen> {
         leading: Container(),
         actions: <Widget>[
           IconButton(
-            icon: Icon(Icons.bug_report),
-            onPressed: () => scaffoldKey.currentState.showBottomSheet(
-              (context) => GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: MediaQuery.of(context).size.width,
-                  color: Colors.black,
-                  height: 200,
-                  child: SingleChildScrollView(
-                    reverse: true,
-                    child: Column(
-                      children: [
-                        Text(logText, style: TextStyle(color: Colors.green))
-                      ],
+              icon: Icon(Icons.bug_report),
+              onPressed: () async => await FlutterEmailSender.send(
+                    Email(
+                      body: Log.instance.getLogs(),
+                      subject: 'BT Log',
+                      recipients: ['eduardoasolanog@gmail.com'],
+                      isHTML: false,
                     ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+                  )),
           IconButton(
               icon: Icon(Icons.exit_to_app),
               onPressed: () {
