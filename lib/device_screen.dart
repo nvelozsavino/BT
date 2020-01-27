@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:bt_flutter/control_button.dart';
+import 'package:bt_flutter/terminal.dart';
 import 'package:bt_flutter/log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
