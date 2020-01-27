@@ -1,6 +1,5 @@
 import 'package:bt_flutter/bluetooth_off.dart';
 import 'package:bt_flutter/find_device.dart';
-import 'package:bt_flutter/terminal_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 
