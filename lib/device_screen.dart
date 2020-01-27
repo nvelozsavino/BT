@@ -75,16 +75,13 @@ class _DeviceScreenState extends State<DeviceScreen> {
               });
 
               await c.setNotifyValue(true).whenComplete(() {
-                c.value.timeout(Duration(seconds: 1), onTimeout: (v) {
-                  writeLog("Timeout notify value");
-                  showSnackbar(
-                      message: "Timeout", type: SnackbarType.SNACKBAR_ERROR);
-                }).listen((v) {
+                c.value.listen((v) {
                   if (v.isNotEmpty) {
                     writeLog("Se recibió ${v.toString()}");
                     if (v.contains(0)) {
                       showSnackbar(
-                          message: '', type: SnackbarType.SNACKBAR_SUCCESS);
+                          message: 'Success',
+                          type: SnackbarType.SNACKBAR_SUCCESS);
                     } else {
                       showSnackbar(
                           message: 'Code error: $v',
