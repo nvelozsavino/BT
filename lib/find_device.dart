@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:bt_flutter/device_screen.dart';
 import 'package:bt_flutter/pulse.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 
 class FindDeviceScreen extends StatefulWidget {
@@ -121,18 +122,22 @@ class _FindDeviceScreenState extends State<FindDeviceScreen>
                                   stopScan();
                                 },
                                 child: Text('Stop'))
-                            : FlatButton(
-                                shape: StadiumBorder(
-                                  side: BorderSide(
-                                      color: Colors.grey.withAlpha(400)),
-                                ),
-                                textColor: Colors.white,
-                                // color: Colors.white,
-                                /*shape: StadiumBorder(
-                            side: BorderSide(color: Colors.red),
-                          ),*/
-                                onPressed: () => scanDevices(),
-                                child: Text('Rescan'),
+                            : Column(
+                                children: [
+                                  Text(
+                                    'Device not found',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  FlatButton(
+                                    shape: StadiumBorder(
+                                      side: BorderSide(
+                                          color: Colors.grey.withAlpha(400)),
+                                    ),
+                                    textColor: Colors.white,
+                                    onPressed: () => scanDevices(),
+                                    child: Text('Retry'),
+                                  ),
+                                ],
                               ),
                       ),
               ],
@@ -337,7 +342,7 @@ class _FindDeviceScreenState extends State<FindDeviceScreen>
     }).whenComplete(() => !connected
             ? setState(() {
                 _pulseColor = Colors.red;
-                _pulseIcon = Icons.bluetooth;
+                _pulseIcon = Icons.bluetooth_disabled;
               })
             : null);
 
@@ -351,7 +356,10 @@ class _FindDeviceScreenState extends State<FindDeviceScreen>
               _pulseColor = Colors.red;
               _pulseIcon = Icons.not_interested;
             }))
-        .whenComplete(() => _controller.stop());
+        .whenComplete(() {
+      _controller.stop();
+      SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+    });
   }
 }
 
