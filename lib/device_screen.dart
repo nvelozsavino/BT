@@ -12,22 +12,29 @@ class DeviceScreen extends StatefulWidget {
   final BluetoothDevice device;
 
   const DeviceScreen({Key key, this.device}) : super(key: key);
+
   @override
   _DeviceScreenState createState() => _DeviceScreenState(device);
 }
 
 class _DeviceScreenState extends State<DeviceScreen> {
   final BluetoothDevice device;
+
   _DeviceScreenState(this.device);
 
   bool isConnected;
-  Guid serviceGuid = Guid('19b10000-e8f2-537e-4f6c-d104768a1214');
-  Guid characteristicGuid = Guid('19b10001-e8f2-537e-4f6c-d104768a1214');
+  Guid serviceGuid = Guid('0000FFF0-4265-2055-6e6c-696d69746564');
+  Guid characteristicGuid = Guid('0000FFF1-4265-2055-6e6c-696d69746564');
+
+  bool upPressed;
+  bool downPressed;
+  Timer timer;
 
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
 
   void writeLog(String message) {
     Log.instance.writeLog("Device Screen : $message");
+    print(message);
   }
 
   void showSnackbar({String message, SnackbarType type}) {
@@ -47,6 +54,9 @@ class _DeviceScreenState extends State<DeviceScreen> {
   void initState() {
     setState(() {
       isConnected = false;
+      upPressed = false;
+      downPressed = false;
+      timer = null;
     });
     readState();
     super.initState();
@@ -56,6 +66,10 @@ class _DeviceScreenState extends State<DeviceScreen> {
   void dispose() {
     super.dispose();
     device.disconnect();
+    if (timer != null) {
+      timer.cancel();
+      timer = null;
+    }
   }
 
   void discoverServices() {
@@ -73,20 +87,33 @@ class _DeviceScreenState extends State<DeviceScreen> {
               setState(() {
                 isConnected = true;
               });
-
+              const oneSec = const Duration(milliseconds:100);
+              timer = new Timer.periodic(oneSec, (Timer t) {
+                if (upPressed) {
+                  c.write(upStart()).then((v) {
+                    writeLog("upStart write ${v.toString()}");
+                  });
+                }
+                print('hi!');
+                if (downPressed) {
+                  c.write(downStart()).then((v) {
+                    writeLog("upDown write ${v.toString()}");
+                  });
+                }
+              });
               await c.setNotifyValue(true).whenComplete(() {
                 c.value.listen((v) {
                   if (v.isNotEmpty) {
                     writeLog("Se recibió ${v.toString()}");
-                    if (v.contains(0)) {
-                      showSnackbar(
-                          message: 'Success',
-                          type: SnackbarType.SNACKBAR_SUCCESS);
-                    } else {
-                      showSnackbar(
-                          message: 'Code error: $v',
-                          type: SnackbarType.SNACKBAR_ERROR);
-                    }
+//                    if (v.contains(0)) {
+//                      showSnackbar(
+//                          message: 'Success',
+//                          type: SnackbarType.SNACKBAR_SUCCESS);
+//                    } else {
+//                      showSnackbar(
+//                          message: 'Code error: $v',
+//                          type: SnackbarType.SNACKBAR_ERROR);
+//                    }
                   }
                 });
                 writeLog(
@@ -119,22 +146,43 @@ class _DeviceScreenState extends State<DeviceScreen> {
 
   List<int> upStart() {
     writeLog('upStart write ${[0x53]}');
+
     return [0x53];
   }
 
   List<int> downStart() {
     writeLog('downStart write ${[0x54]}');
-    return [0x54];
+    return [0x90];
   }
 
   List<int> upStop() {
     writeLog('upStop write ${[0x90]}');
-    return [0x90];
+    return [0xff];
   }
 
   List<int> downStop() {
     writeLog('downStop write ${[0x91]}');
-    return [0x91];
+    return [0xff];
+  }
+
+  void upPress(BluetoothCharacteristic cc) {
+    print(515454);
+    while (upPressed) {
+      cc
+          .write(upStart())
+          .timeout(Duration(seconds: 1), onTimeout: () async {
+            showSnackbar(message: "Timeout", type: SnackbarType.SNACKBAR_ERROR);
+          })
+          .then((v) {
+            writeLog("upStart write ${v.toString()}");
+          })
+          .whenComplete(() => writeLog("downStart completed"))
+          .catchError((Object e) {
+            writeLog("upStart  ${e.toString()}");
+            showSnackbar(
+                message: e.toString(), type: SnackbarType.SNACKBAR_ERROR);
+          });
+    }
   }
 
   Widget controlArea() {
@@ -173,118 +221,41 @@ class _DeviceScreenState extends State<DeviceScreen> {
                           .firstWhere((c) => c.uuid == characteristicGuid);
 
                       return Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: <Widget>[
-                          Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: <Widget>[
+                            Column(
                               mainAxisSize: MainAxisSize.min,
                               mainAxisAlignment: MainAxisAlignment.start,
                               children: <Widget>[
                                 Container(
                                     child: ControlButtons(
-                                  color: Color(0xff5bc236),
-                                  upIcon: Icons.arrow_drop_up,
-                                  downIcon: Icons.arrow_drop_down,
-                                  onIncrement: () => cc
-                                      .write(upStart())
-                                      .timeout(Duration(seconds: 1),
-                                          onTimeout: () async {
-                                        writeLog("Timeout on upStart");
-                                        showSnackbar(
-                                            message: "Timeout",
-                                            type: SnackbarType.SNACKBAR_ERROR);
-                                      })
-                                      .then((v) {
-                                        writeLog(
-                                            "upStart write ${v.toString()}");
-                                      })
-                                      .whenComplete(
-                                          () => writeLog("downStart completed"))
-                                      .catchError((Object e) {
-                                        writeLog("upStart  ${e.toString()}");
-                                        showSnackbar(
-                                            message: e.toString(),
-                                            type: SnackbarType.SNACKBAR_ERROR);
-                                      }),
-                                  onDecrement: () => cc
-                                      .write(downStart())
-                                      .timeout(Duration(seconds: 1),
-                                          onTimeout: () async {
-                                        writeLog("Timeout on downStart");
-                                        showSnackbar(
-                                            message: "Timeout",
-                                            type: SnackbarType.SNACKBAR_ERROR);
-                                      })
-                                      .then((v) {
-                                        writeLog(
-                                            "downStart write ${v.toString()}");
-                                      })
-                                      .whenComplete(
-                                          () => writeLog("downStart completed"))
-                                      .catchError((Object e) {
-                                        writeLog("downStart  ${e.toString()}");
-                                        showSnackbar(
-                                            message: e.toString(),
-                                            type: SnackbarType.SNACKBAR_ERROR);
-                                      }),
-                                )),
-                              ]),
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: <Widget>[
-                              ControlButtons(
-                                color: Colors.red,
-                                upIcon: Icons.arrow_drop_up,
-                                downIcon: Icons.arrow_drop_down,
-                                onIncrement: () => cc
-                                    .write(upStop())
-                                    .timeout(Duration(seconds: 1),
-                                        onTimeout: () async {
-                                      writeLog("Timeout on upStop");
-                                      showSnackbar(
-                                          message: "Timeout",
-                                          type: SnackbarType.SNACKBAR_ERROR);
-                                    })
-                                    .then((v) {
-                                      writeLog("upStop write ${v.toString()}");
-                                    })
-                                    .whenComplete(
-                                        () => writeLog("upStop completed"))
-                                    .catchError((Object e) {
-                                      writeLog("upStop  ${e.toString()}");
-                                      showSnackbar(
-                                          message: e.toString(),
-                                          type: SnackbarType.SNACKBAR_ERROR);
-                                    }),
-                                onDecrement: () => cc
-                                    .write(downStop())
-                                    .timeout(Duration(seconds: 1),
-                                        onTimeout: () async {
-                                      writeLog("Timeout on downStop");
-                                      showSnackbar(
-                                          message: "Timeout",
-                                          type: SnackbarType.SNACKBAR_ERROR);
-                                    })
-                                    .then((v) {
-                                      writeLog(
-                                          "downStop write ${v.toString()}");
-                                    })
-                                    .whenComplete(
-                                        () => writeLog("downStop completed"))
-                                    .catchError(
-                                      (Object e) {
-                                        writeLog("downStop  ${e.toString()}");
-                                        showSnackbar(
-                                            message: e.toString(),
-                                            type: SnackbarType.SNACKBAR_ERROR);
-                                      },
-                                    ),
-                              )
-                            ],
-                          ),
-                        ],
-                      );
+                                        color: Color(0xff5bc236),
+                                        upIcon: Icons.arrow_drop_up,
+                                        downIcon: Icons.arrow_drop_down,
+                                        onUpPress: (_) {
+                                          setState(() {
+                                            upPressed = true;
+                                          });
+                                        },
+                                        onUpRelease: (_) {
+                                          setState(() {
+                                            upPressed = false;
+                                          });
+                                        },
+                                        onDownPress: (_) {
+                                          setState(() {
+                                            downPressed = true;
+                                          });
+                                        },
+                                        onDownRelease: (_) {
+                                          setState(() {
+                                            downPressed = false;
+                                          });
+                                        })),
+                              ],
+                            ),
+                          ]);
                     } catch (e) {
                       writeLog("Catch error ${e.toString()}");
                       return Center(

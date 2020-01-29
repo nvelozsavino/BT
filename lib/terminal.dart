@@ -2,15 +2,19 @@ import 'package:bt_flutter/terminal_button.dart';
 import 'package:flutter/material.dart';
 
 class ControlButtons extends StatelessWidget {
-  final VoidCallback onIncrement;
-  final VoidCallback onDecrement;
+  final GestureTapDownCallback onUpPress;
+  final GestureTapUpCallback onUpRelease;
+  final GestureTapDownCallback onDownPress;
+  final GestureTapUpCallback onDownRelease;
   final IconData upIcon;
   final IconData downIcon;
   final Color color;
 
   ControlButtons(
-      {this.onIncrement,
-      this.onDecrement,
+      {this.onUpPress,
+      this.onUpRelease,
+        this.onDownPress,
+      this.onDownRelease,
       this.upIcon = Icons.add,
       this.downIcon = Icons.remove,
       this.color});
@@ -40,7 +44,7 @@ class ControlButtons extends StatelessWidget {
             ),
           ),
           child: TerminalButton(
-              color: color, icon: upIcon, onPressed: onIncrement),
+              color: color, icon: upIcon, onTapDown: onUpPress, onTapUp: onUpRelease),
         ),
         SizedBox(
           height: 100,
@@ -66,7 +70,7 @@ class ControlButtons extends StatelessWidget {
             ),
           ),
           child: TerminalButton(
-              color: color, icon: downIcon, onPressed: onDecrement),
+              color: color, icon: downIcon, onTapDown:onDownPress, onTapUp: onDownRelease),
         ),
       ],
     );

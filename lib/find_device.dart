@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:bt_flutter/device_screen.dart';
@@ -20,6 +21,7 @@ class _FindDeviceScreenState extends State<FindDeviceScreen>
   Color _pulseColor;
   IconData _pulseIcon;
   bool connected;
+  StreamSubscription scanSubscription;
 
   @override
   void initState() {
@@ -38,6 +40,7 @@ class _FindDeviceScreenState extends State<FindDeviceScreen>
   @override
   void dispose() {
     _controller.dispose();
+    scanSubscription.cancel();
     super.dispose();
   }
 
@@ -154,16 +157,30 @@ class _FindDeviceScreenState extends State<FindDeviceScreen>
       _pulseIcon = Icons.bluetooth_searching;
     });
     _startAnimation();
-    FlutterBlue.instance
-        .startScan(timeout: Duration(seconds: 10))
-        .then((value) {
-      final List<ScanResult> list = value;
+    FlutterBlue flutterBlue = FlutterBlue.instance;
+
+    flutterBlue.startScan(timeout: Duration(seconds: 10)).whenComplete(
+      () {
+        scanSubscription.cancel();
+        if (!connected) {
+          Log.instance.writeLog("Device not found");
+          setState(() {
+            _pulseColor = Colors.red;
+            _pulseIcon = Icons.bluetooth_disabled;
+          });
+        }
+      },
+    );
+    scanSubscription = flutterBlue.scanResults.listen((scanResult) {
+      final List<ScanResult> list = scanResult;
 
       list.forEach((d) {
         if (d.device.name.toLowerCase() == 'led') {
           Log.instance.writeLog("${d.device.name} founded ");
           setState(() {
             device = d.device;
+            flutterBlue.stopScan();
+
             device.connect().then((v) {
               Log.instance.writeLog("${d.device.name} connecting");
               setState(() {
@@ -179,20 +196,11 @@ class _FindDeviceScreenState extends State<FindDeviceScreen>
                     builder: (context) => DeviceScreen(device: device)));
               });
             });
+            return;
           });
         }
       });
-    }).whenComplete(
-      () {
-        if (!connected) {
-          Log.instance.writeLog("Device not found");
-          setState(() {
-            _pulseColor = Colors.red;
-            _pulseIcon = Icons.bluetooth_disabled;
-          });
-        }
-      },
-    );
+    });
   }
 
   void stopScan() async {

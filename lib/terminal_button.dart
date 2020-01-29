@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
 class TerminalButton extends StatefulWidget {
-  final VoidCallback onPressed;
+  final GestureTapDownCallback onTapDown;
+  final GestureTapUpCallback onTapUp;
   final IconData icon;
   final Color color;
 
-  TerminalButton({this.onPressed, this.icon, this.color});
+  TerminalButton({this.onTapDown, this.onTapUp, this.icon, this.color});
 
   @override
   _TerminalButtonState createState() => _TerminalButtonState();
@@ -14,9 +15,10 @@ class TerminalButton extends StatefulWidget {
 class _TerminalButtonState extends State<TerminalButton> {
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: widget.onPressed,
-      borderRadius: BorderRadius.circular(10.0),
+    return GestureDetector(
+      onTapDown: widget.onTapDown,
+      onTapUp: widget.onTapUp,
+//      borderRadius: BorderRadius.circular(10.0),
       child: Center(
         child: Icon(
           widget.icon,
@@ -28,6 +30,6 @@ class _TerminalButtonState extends State<TerminalButton> {
   }
 
   void pressed() {
-    widget.onPressed();
+//    widget.onTapDown();
   }
 }
